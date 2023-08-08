@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Select Towns</h2>
+
+    <form action="/" method="post">
+        <div class="row">
+            {% for town in towns %}
+                <div class="col-md-3 col-sm-4">
+                    <input type="checkbox" id="town-{{ loop.index0 }}" name="town[]" value="{{ town }}">
+                    <label for="town-{{ loop.index0 }}">{{ town }}</label>
+                </div>
+                {% if loop.index0 % 4 == 0 and loop.index0 != 0 %}<div class="w-100"></div>{% endif %}
+            {% endfor %}
+        </div>
+
+        <button type="submit" class="btn btn-primary mt-3">Submit</button>
+    </form>
+{% endblock %}

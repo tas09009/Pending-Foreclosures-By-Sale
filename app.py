@@ -3,8 +3,13 @@ import datetime
 from lxml import html
 import webbrowser
 
+from flask import Flask, render_template, request
+
 BASE_URL = (
     "https://sso.eservices.jud.ct.gov/Foreclosures/Public/PendPostbyTownDetails.aspx"
+)
+LIST_OF_TOWNS_URL = (
+    "https://sso.eservices.jud.ct.gov/Foreclosures/Public/PendPostbyTownList.aspx"
 )
 VIEW_FULL_NOTICE_BASE_URL = "https://sso.eservices.jud.ct.gov/Foreclosures/Public"
 HEADERS = {
@@ -24,9 +29,45 @@ HEADERS = {
 }
 
 # Xpaths
+TOWN_XPATH_LIST = '//a[contains(@href, "PendPostbyTownDetails.aspx")]/text()'
 NEXT_SALE_DATE_XPATH = '//*[@id="ctl00_cphBody_GridView1_ctl02_Label1"]/text()[1]'
 PAGE_LINKS = '//*[contains(text(), "{date}")]/../..//a[contains(text(), "View Full Notice")]/@href'
 CANCELLED_SALE_NOTICE = '//*[contains(text(), "This Sale is Cancelled")]'
+
+
+app = Flask(__name__)
+
+
+@app.route("/", methods=["GET", "POST"])
+def homepage():
+    if request.method == "GET":
+        towns = get_all_towns()
+        return render_template("homepage.html", towns=towns)
+
+    if request.method == "POST":
+        town_list = request.form.getlist("town[]")
+        urls = []
+        for town in town_list:
+            tree = get_page_xml_tree(town)
+            date = tree.xpath(NEXT_SALE_DATE_XPATH)[0]
+
+            if is_date_within_week(date):
+                links = tree.xpath(PAGE_LINKS.format(date=date))
+                for page_path in links:
+                    url = VIEW_FULL_NOTICE_BASE_URL + "/" + page_path
+                    if not is_sale_cancelled(url):
+                        urls.append(url)
+
+        # Open each one up!
+        for url in urls:
+            webbrowser.open(url)
+
+
+def get_all_towns():
+    response = requests.get(LIST_OF_TOWNS_URL, headers=HEADERS)
+    tree = html.fromstring(response.content)
+    towns = tree.xpath(TOWN_XPATH_LIST)
+    return towns
 
 
 def create_parameters(town):
@@ -65,22 +106,3 @@ def is_sale_cancelled(url):
     response = requests.get(url, headers=HEADERS)
     tree = html.fromstring(response.content)
     return True if tree.xpath(CANCELLED_SALE_NOTICE) else False
-
-
-if __name__ == "__main__":
-    town_list = open("town_list.txt").read().split("\n")
-    urls = []
-    for town in town_list:
-        tree = get_page_xml_tree(town)
-        date = tree.xpath(NEXT_SALE_DATE_XPATH)[0]
-
-        if is_date_within_week(date):
-            links = tree.xpath(PAGE_LINKS.format(date=date))
-            for page_path in links:
-                url = VIEW_FULL_NOTICE_BASE_URL + "/" + page_path
-                if not is_sale_cancelled(url):
-                    urls.append(url)
-
-    # Open each one up!
-    for url in urls:
-        webbrowser.open(url)
