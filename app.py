@@ -43,7 +43,7 @@ def homepage():
         towns = get_all_towns()
         return render_template("homepage.html", towns=towns)
 
-    if request.method == "POST":
+    elif request.method == "POST":
         town_list = request.form.getlist("town[]")
         town_urls = {}
         for town in town_list:
@@ -64,6 +64,8 @@ def homepage():
         return render_template(
             "homepage.html", towns=get_all_towns(), town_urls=town_urls
         )
+    else:
+        return "Invalid request method", 400
 
 
 def get_all_towns():
