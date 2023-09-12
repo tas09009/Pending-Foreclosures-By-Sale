@@ -1,7 +1,6 @@
 import requests
 import datetime
 from lxml import html
-import webbrowser
 
 from flask import Flask, render_template, request
 
@@ -46,8 +45,11 @@ def homepage():
 
     if request.method == "POST":
         town_list = request.form.getlist("town[]")
-        urls = []
+        town_urls = {}
         for town in town_list:
+            if "Milford" in town:
+                town = "Milford"
+            urls = []
             tree = get_page_xml_tree(town)
             date = tree.xpath(NEXT_SALE_DATE_XPATH)[0]
 
@@ -57,16 +59,23 @@ def homepage():
                     url = VIEW_FULL_NOTICE_BASE_URL + "/" + page_path
                     if not is_sale_cancelled(url):
                         urls.append(url)
+            town_urls[town] = urls
 
-        # Open each one up!
-        for url in urls:
-            webbrowser.open(url)
+        return render_template(
+            "homepage.html", towns=get_all_towns(), town_urls=town_urls
+        )
 
 
 def get_all_towns():
     response = requests.get(LIST_OF_TOWNS_URL, headers=HEADERS)
     tree = html.fromstring(response.content)
     towns = tree.xpath(TOWN_XPATH_LIST)
+
+    affected_town = next((town for town in towns if "Milford" in town), None)
+    if affected_town:
+        cleaned_town = affected_town.replace("Â\xa0", "").strip()
+        towns[towns.index(affected_town)] = cleaned_town
+
     return towns
 
 
@@ -75,11 +84,11 @@ def create_parameters(town):
     'Milford' seems to be the only exception here with two
     non-breaking spaces in its URL
     """
-    if town != "Milford":
-        parameters = {"town": {town}}
-    else:
-        town_alternate = town + "\u00A0" + "\u00A0"
+    if "Milford" in town:
+        town_alternate = "Milford" + "\u00A0" + "\u00A0"
         parameters = {"town": {town_alternate}}
+    else:
+        parameters = {"town": {town}}
     return parameters
 
 

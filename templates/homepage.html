@@ -16,4 +16,17 @@
 
         <button type="submit" class="btn btn-primary mt-3">Submit</button>
     </form>
+
+    <div class="mt-5">
+        {% if town_urls %}
+            {% for town, urls in town_urls.items() %}
+                <h3>{{ town }}</h3>
+                <ul>
+                    {% for url in urls %}
+                        <li><a href="{{ url }}" target="_blank">{{ url }}</a></li>
+                    {% endfor %}
+                </ul>
+            {% endfor %}
+        {% endif %}
+    </div>
 {% endblock %}
